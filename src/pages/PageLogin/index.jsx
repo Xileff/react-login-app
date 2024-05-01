@@ -3,26 +3,53 @@ import Swal from 'sweetalert2';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../../store/reducers/auth';
+import { useNavigate } from 'react-router-dom';
+import { yupResolver } from '@hookform/resolvers/yup';
+import loginSchema from '../../validators/loginSchema';
 
 const PageLogin = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isLoading } = useSelector((state) => state.auth);
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm();
+    reset,
+  } = useForm({
+    resolver: yupResolver(loginSchema),
+  });
+
+  const handleLoginFulfilled = (action) => {
+    const accessToken = action.payload.accessToken;
+    localStorage.setItem('accessToken', accessToken);
+    Swal.fire({
+      title: 'Success',
+      icon: 'success',
+      text: 'Successful login.',
+    });
+    navigate('/');
+  };
+
+  const handleLoginRejected = (action) => {
+    Swal.fire({
+      title: 'Failed',
+      icon: 'error',
+      text: action.payload.data.data,
+    });
+    reset();
+  };
 
   const onSubmit = (data) => {
     dispatch(login(data)).then((action) => {
-      const accessToken = action.payload.accessToken;
-      localStorage.setItem('accessToken', accessToken);
-      Swal.fire({
-        title: 'Success',
-        icon: 'success',
-        text: 'We will redirect you shortly.',
-        timer: 2000,
-      });
+      switch (action.type) {
+        case 'auth/login/fulfilled':
+          handleLoginFulfilled(action);
+          break;
+        case 'auth/login/rejected':
+          handleLoginRejected(action);
+          break;
+      }
     });
   };
 
@@ -44,21 +71,29 @@ const PageLogin = () => {
               <FaUser />
               <input
                 type='text'
-                {...register('username', { required: true })}
+                {...register('username')}
                 placeholder='Username'
                 className='grow'
               />
-              {errors.username && <span>Username is required.</span>}
+              {errors.username && (
+                <span className='block max-w-64'>
+                  {errors.username?.message}
+                </span>
+              )}
             </label>
             <label className='input input-bordered flex items-center gap-2 my-2'>
               <FaLock />
               <input
                 type='password'
-                {...register('password', { required: true })}
+                {...register('password')}
                 placeholder='Password'
                 className='grow'
               />
-              {errors.password && <span>Password is required.</span>}
+              {errors.password && (
+                <span className='block max-w-64'>
+                  {errors.password?.message}
+                </span>
+              )}
             </label>
             <button type='submit' className='btn w-full'>
               {isLoading ? (
